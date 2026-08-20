@@ -37,12 +37,19 @@ function validateUpload(file: File): string | null {
   return null;
 }
 
-function TabButton(props: { active: boolean; onClick: () => void; children: ReactNode }) {
+function TabButton(props: {
+  id: string;
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
     <button
       type="button"
+      id={props.id}
       role="tab"
       aria-selected={props.active}
+      aria-controls="document-panel"
       onClick={props.onClick}
       className={`-mb-px border-b-2 px-0.5 pb-2.5 text-[13px] font-medium transition-colors ${
         props.active
@@ -93,9 +100,6 @@ export function DocumentDashboard({
   const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Server data wins whenever the page is refreshed or navigated back to.
-  useEffect(() => setData(initialData), [initialData]);
-
   useEffect(() => {
     if (!pendingDelete) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -110,8 +114,8 @@ export function DocumentDashboard({
     setCreating(true);
     setError(null);
     try {
-      const { document } = await api.createDocument();
-      router.push(`/documents/${document.id}`);
+      const { document: created } = await api.createDocument();
+      router.push(`/documents/${created.id}`);
     } catch (caught) {
       setError(describe(caught, "Could not create a document. Please try again."));
       setCreating(false);
@@ -127,8 +131,8 @@ export function DocumentDashboard({
     setImporting(true);
     setError(null);
     try {
-      const { document } = await api.importNewDocument(file);
-      router.push(`/documents/${document.id}`);
+      const { document: imported } = await api.importNewDocument(file);
+      router.push(`/documents/${imported.id}`);
     } catch (caught) {
       setError(describe(caught, "That file could not be imported."));
       setImporting(false);
@@ -233,10 +237,10 @@ export function DocumentDashboard({
       </div>
 
       <div className="mt-6 flex items-center gap-6 border-b border-line" role="tablist">
-        <TabButton active={tab === "owned"} onClick={() => setTab("owned")}>
+        <TabButton id="tab-owned" active={tab === "owned"} onClick={() => setTab("owned")}>
           Owned by me ({data.owned.length})
         </TabButton>
-        <TabButton active={tab === "shared"} onClick={() => setTab("shared")}>
+        <TabButton id="tab-shared" active={tab === "shared"} onClick={() => setTab("shared")}>
           Shared with me ({data.shared.length})
         </TabButton>
       </div>
@@ -247,7 +251,7 @@ export function DocumentDashboard({
         </div>
       ) : null}
 
-      <div className="mt-6" role="tabpanel">
+      <div className="mt-6" role="tabpanel" id="document-panel" aria-labelledby={`tab-${tab}`}>
         {visible.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {visible.map((doc) => (
@@ -256,7 +260,10 @@ export function DocumentDashboard({
                 doc={doc}
                 currentUser={currentUser}
                 onRename={(id, title) => void renameDocument(id, title)}
-                onRequestDelete={setPendingDelete}
+                onRequestDelete={(target) => {
+                  setError(null);
+                  setPendingDelete(target);
+                }}
               />
             ))}
           </div>
@@ -289,6 +296,11 @@ export function DocumentDashboard({
           The document and its version history will be removed for you and for everyone it
           was shared with.
         </p>
+        {error ? (
+          <div className="mt-4">
+            <ErrorNote>{error}</ErrorNote>
+          </div>
+        ) : null}
         <div className="mt-5 flex justify-end gap-2">
           <Button onClick={() => setPendingDelete(null)} disabled={deleting}>
             Cancel

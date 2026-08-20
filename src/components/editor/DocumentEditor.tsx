@@ -7,7 +7,14 @@ import clsx from "clsx";
 import { ArrowLeft, ClockFading, Eye, Share2, TriangleAlert, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ComponentType, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ButtonHTMLAttributes,
+  type ComponentType,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Avatar, Badge, Button, Spinner } from "@/components/ui/primitives";
 import { ApiClientError, api } from "@/lib/api-client";
 import type { DocumentDetail, PublicUser } from "@/lib/api-types";
@@ -56,10 +63,12 @@ export function DocumentEditor({
   const paused = useRef(false);
   const saveRef = useRef<() => Promise<void>>(async () => {});
 
-  const hasPendingChanges = useCallback(() => {
-    const html = editorRef.current?.getHTML() ?? savedHtml.current;
-    return html !== savedHtml.current || titleRef.current !== savedTitle.current;
-  }, []);
+  const isDirty = useCallback(
+    () =>
+      (editorRef.current?.getHTML() ?? savedHtml.current) !== savedHtml.current ||
+      titleRef.current !== savedTitle.current,
+    [],
+  );
 
   const schedule = useCallback((delay: number = AUTOSAVE_DELAY_MS) => {
     if (timer.current) clearTimeout(timer.current);
@@ -69,7 +78,7 @@ export function DocumentEditor({
     }, delay);
   }, []);
 
-  /** One writer for every save path: debounce, ⌘S, blur, unmount. */
+  /** The single writer. Every save path (debounce, ⌘S, blur, unmount) lands here. */
   const save = useCallback(async () => {
     if (paused.current || !access.canEdit) return;
     if (timer.current) {
@@ -86,11 +95,8 @@ export function DocumentEditor({
       setSaveState((state) => (state === "dirty" ? "saved" : state));
       return;
     }
-    // A save is already on the wire: let it land, then flush what came after it.
-    if (inflight.current) {
-      schedule(250);
-      return;
-    }
+    // A request is already on the wire: let it land, then flush what came after.
+    if (inflight.current) return schedule(250);
 
     inflight.current = true;
     setSaveState("saving");
@@ -99,27 +105,27 @@ export function DocumentEditor({
       if (body.contentHtml !== undefined) savedHtml.current = body.contentHtml;
       savedTitle.current = next.title;
       baseUpdatedAt.current = next.updatedAt;
-      // Keep the local content: `next.contentHtml` is a round trip behind the caret.
-      setDoc((prev) => ({ ...next, contentHtml: prev.contentHtml, access: prev.access }));
+      // Keep the local content — `next.contentHtml` is one round trip behind the caret.
+      setDoc((prev) => ({ ...next, contentHtml: prev.contentHtml }));
       setSaveError(null);
       setJustSaved(true);
-      setSaveState(hasPendingChanges() ? "dirty" : "saved");
+      setSaveState(isDirty() ? "dirty" : "saved");
     } catch (cause) {
       if (cause instanceof ApiClientError && cause.code === "conflict") {
-        paused.current = true;
+        paused.current = true; // Never overwrite someone else's work.
         setSaveState("conflict");
       } else {
         setSaveError(
           cause instanceof ApiClientError
             ? cause.message
-            : "Could not reach the server. Your text is still here.",
+            : "Could not reach the server. Your text is safe in this tab.",
         );
         setSaveState("error");
       }
     } finally {
       inflight.current = false;
     }
-  }, [access.canEdit, doc.id, hasPendingChanges, schedule]);
+  }, [access.canEdit, doc.id, isDirty, schedule]);
 
   useEffect(() => {
     saveRef.current = save;
@@ -139,7 +145,7 @@ export function DocumentEditor({
     editorProps: { attributes: { class: "doc-surface ProseMirror" } },
     onCreate: ({ editor: instance }) => {
       editorRef.current = instance;
-      // Normalise against TipTap's own serialisation so a fresh doc is not "dirty".
+      // Normalise against TipTap's serialiser so an untouched document is not "dirty".
       savedHtml.current = instance.getHTML();
     },
     onUpdate: () => {
@@ -174,7 +180,7 @@ export function DocumentEditor({
   useEffect(() => {
     if (!access.canEdit) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (paused.current || !hasPendingChanges()) return;
+      if (paused.current || !isDirty()) return;
       void saveRef.current();
       event.preventDefault();
       event.returnValue = "";
@@ -183,11 +189,11 @@ export function DocumentEditor({
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
       if (timer.current) clearTimeout(timer.current);
-      if (!paused.current && hasPendingChanges()) void saveRef.current();
+      if (!paused.current && isDirty()) void saveRef.current();
     };
-  }, [access.canEdit, hasPendingChanges]);
+  }, [access.canEdit, isDirty]);
 
-  /** Adopts a document returned by import / restore / share. */
+  /** Adopts a document handed back by import / restore / share / reload. */
   const adopt = useCallback((next: DocumentDetail, replaceContent: boolean) => {
     if (replaceContent && editorRef.current) {
       editorRef.current.commands.setContent(next.contentHtml);
@@ -227,6 +233,38 @@ export function DocumentEditor({
 
   const isOwner = doc.role === "owner";
   const collaborators = doc.sharedWith.map((entry) => entry.user);
+  const byline = !isOwner
+    ? `Shared by ${doc.owner.name}`
+    : doc.lastEditedBy && doc.lastEditedBy.id !== currentUser.id
+      ? `Last edit by ${doc.lastEditedBy.name}`
+      : null;
+
+  const notice = ((): Notice | null => {
+    if (saveState === "conflict") {
+      return {
+        tone: "red",
+        icon: TriangleAlert,
+        text: "This document was changed by someone else. Reload to see the latest version — autosave is paused so nothing gets overwritten.",
+        action: { label: "Reload", run: () => void reload() },
+      };
+    }
+    if (saveState === "error" && saveError) {
+      return {
+        tone: "red",
+        icon: TriangleAlert,
+        text: saveError,
+        action: { label: "Retry", run: () => void saveRef.current() },
+      };
+    }
+    if (!access.canEdit) {
+      return {
+        tone: "amber",
+        icon: Eye,
+        text: `You have view-only access — ask ${doc.owner.name} for edit access to make changes.`,
+      };
+    }
+    return null;
+  })();
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
@@ -251,24 +289,21 @@ export function DocumentEditor({
                   <input
                     id="doc-title"
                     value={title}
+                    maxLength={200}
                     onChange={(event) => setTitle(event.target.value)}
                     onBlur={commitTitle}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        event.currentTarget.blur();
-                      }
+                      if (event.key === "Enter") event.currentTarget.blur();
                       if (event.key === "Escape") {
                         setTitle(savedTitle.current);
                         event.currentTarget.blur();
                       }
                     }}
-                    maxLength={200}
-                    className="min-w-0 max-w-[22rem] flex-1 truncate rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[15px] font-semibold text-ink-900 hover:border-line focus:border-brand-500 focus:outline-none"
+                    className="min-w-0 max-w-[22rem] flex-1 truncate rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[15px] font-semibold text-ink-900 hover:border-line focus:border-brand-500 focus:outline-none"
                   />
                 </>
               ) : (
-                <h1 className="max-w-[22rem] truncate px-1 text-[15px] font-semibold text-ink-900">
+                <h1 className="max-w-[22rem] truncate px-1.5 text-[15px] font-semibold text-ink-900">
                   {doc.title}
                 </h1>
               )}
@@ -278,43 +313,34 @@ export function DocumentEditor({
                 </Badge>
               ) : null}
             </div>
-            <div className="flex items-center gap-1.5 px-1 text-[12px] text-ink-500">
+
+            <div className="flex items-center gap-1.5 px-1.5 text-[12px] text-ink-500">
               <SaveStatus state={saveState} justSaved={justSaved} editable={access.canEdit} />
-              <span aria-hidden>·</span>
+              <Dot />
               <WordCount editor={editor} fallback={doc.wordCount} />
-              {!isOwner ? (
+              {byline ? (
                 <>
-                  <span aria-hidden>·</span>
-                  <span className="hidden truncate sm:inline">
-                    Shared by {doc.owner.name}
-                  </span>
+                  <Dot />
+                  <span className="hidden truncate sm:inline">{byline}</span>
                 </>
               ) : null}
             </div>
           </div>
 
           {collaborators.length > 0 ? (
-            <div className="hidden items-center pr-1 sm:flex">
-              <AvatarStack owner={doc.owner} people={collaborators} />
-            </div>
+            <AvatarStack owner={doc.owner} people={collaborators} />
           ) : null}
 
           {access.canViewHistory ? (
-            <Button
-              size="sm"
-              onClick={() => setHistoryOpen((value) => !value)}
+            <BarButton
+              icon={ClockFading}
+              label="History"
               aria-pressed={historyOpen}
-              title="Version history"
-            >
-              <ClockFading className="size-4" aria-hidden />
-              <span className="hidden md:inline">History</span>
-            </Button>
+              onClick={() => setHistoryOpen((value) => !value)}
+            />
           ) : null}
           {access.canImport ? (
-            <Button size="sm" onClick={() => setDialog("import")} title="Import a file">
-              <Upload className="size-4" aria-hidden />
-              <span className="hidden md:inline">Import</span>
-            </Button>
+            <BarButton icon={Upload} label="Import" onClick={() => setDialog("import")} />
           ) : null}
           <ExportMenu documentId={doc.id} />
           {access.canShare ? (
@@ -333,50 +359,16 @@ export function DocumentEditor({
       ) : null}
 
       <div className="print-hidden">
-        {saveState === "conflict" ? (
-          <Banner tone="red" icon={TriangleAlert}>
-            <span className="flex-1">
-              This document was changed by someone else. Reload to see the latest version —
-              autosave is paused so nothing gets overwritten.
-            </span>
-            <Button size="sm" onClick={() => void reload()}>
-              Reload
-            </Button>
-          </Banner>
-        ) : null}
-
-        {saveState === "error" && saveError ? (
-          <Banner tone="red" icon={TriangleAlert}>
-            <span className="flex-1">{saveError}</span>
-            <Button size="sm" onClick={() => void saveRef.current()}>
-              Retry
-            </Button>
-          </Banner>
-        ) : null}
-
-        {!access.canEdit ? (
-          <Banner tone="amber" icon={Eye}>
-            <span className="flex-1">
-              You have view-only access — ask {doc.owner.name} for edit access to make
-              changes.
-            </span>
-          </Banner>
-        ) : null}
-
+        {notice ? <NoticeBar notice={notice} /> : null}
         {warnings.length > 0 ? (
-          <Banner tone="amber" icon={TriangleAlert}>
-            <span className="flex-1">
-              Imported with {warnings.length === 1 ? "a note" : "notes"}: {warnings.join(" · ")}
-            </span>
-            <button
-              type="button"
-              aria-label="Dismiss import notes"
-              className="rounded-md p-1 hover:bg-amber-100"
-              onClick={() => setWarnings([])}
-            >
-              <X className="size-3.5" aria-hidden />
-            </button>
-          </Banner>
+          <NoticeBar
+            notice={{
+              tone: "amber",
+              icon: TriangleAlert,
+              text: `Imported with ${warnings.length === 1 ? "a note" : "notes"}: ${warnings.join(" · ")}`,
+            }}
+            onDismiss={() => setWarnings([])}
+          />
         ) : null}
       </div>
 
@@ -409,8 +401,36 @@ export function DocumentEditor({
         onRestored={(next) => adopt(next, true)}
         reloadKey={historyKey}
       />
-      <span className="sr-only">Signed in as {currentUser.name}</span>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ subviews */
+
+interface Notice {
+  tone: "red" | "amber";
+  icon: ComponentType<{ className?: string }>;
+  text: string;
+  action?: { label: string; run: () => void };
+}
+
+function Dot() {
+  return <span aria-hidden>·</span>;
+}
+
+function BarButton({
+  icon: Icon,
+  label,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <Button size="sm" title={label} {...rest}>
+      <Icon className="size-4" />
+      <span className="hidden md:inline">{label}</span>
+    </Button>
   );
 }
 
@@ -438,19 +458,18 @@ function SaveStatus({
 }
 
 function WordCount({ editor, fallback }: { editor: Editor | null; fallback: number }) {
-  const count = useEditorState({
+  const live = useEditorState({
     editor,
     selector: ({ editor: instance }) => (instance ? countWords(instance.getText()) : null),
   });
-  const value = count ?? fallback;
-  return <span>{value.toLocaleString()} words</span>;
+  return <span>{(live ?? fallback).toLocaleString()} words</span>;
 }
 
 function AvatarStack({ owner, people }: { owner: PublicUser; people: PublicUser[] }) {
   const shown = people.slice(0, 3);
   const extra = people.length - shown.length;
   return (
-    <div className="flex items-center">
+    <div className="hidden items-center pr-1 sm:flex">
       {[owner, ...shown].map((person, index) => (
         <span
           key={person.id}
@@ -473,15 +492,8 @@ function AvatarStack({ owner, people }: { owner: PublicUser; people: PublicUser[
   );
 }
 
-function Banner({
-  tone,
-  icon: Icon,
-  children,
-}: {
-  tone: "red" | "amber";
-  icon: ComponentType<{ className?: string }>;
-  children: ReactNode;
-}) {
+function NoticeBar({ notice, onDismiss }: { notice: Notice; onDismiss?: () => void }) {
+  const { tone, icon: Icon, text, action } = notice;
   return (
     <div
       role="status"
@@ -493,7 +505,22 @@ function Banner({
       )}
     >
       <Icon className="size-4 shrink-0" />
-      {children}
+      <span className="flex-1">{text}</span>
+      {action ? (
+        <Button size="sm" onClick={action.run}>
+          {action.label}
+        </Button>
+      ) : null}
+      {onDismiss ? (
+        <button
+          type="button"
+          aria-label="Dismiss"
+          className="rounded-md p-1 hover:bg-amber-100"
+          onClick={onDismiss}
+        >
+          <X className="size-3.5" aria-hidden />
+        </button>
+      ) : null}
     </div>
   );
 }
