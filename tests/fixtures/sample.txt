@@ -1,0 +1,6 @@
+Meeting notes
+
+We agreed to keep the scope small.
+Two surfaces only: dashboard and editor.
+
+Action: <b>write it down</b> & move on.
