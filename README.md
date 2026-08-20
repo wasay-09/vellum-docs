@@ -51,6 +51,7 @@ The fastest path through everything that matters:
 | ![Dashboard](docs/screenshots/02-dashboard-owned.png)<br>**Dashboard** — owned vs shared, with roles and collaborators | ![Editor](docs/screenshots/04-editor.png)<br>**Editor** — formatting toolbar, autosave status, word count |
 | ![Sharing](docs/screenshots/07-share-dialog-granted.png)<br>**Sharing** — grant by email, change role, revoke | ![Read-only](docs/screenshots/13-carol-readonly-editor.png)<br>**Viewer** — read-only, with the reason stated |
 | ![Import](docs/screenshots/08-import-dialog.png)<br>**Import** — `.docx` / `.md` / `.txt`, append or replace | ![History](docs/screenshots/10-version-history.png)<br>**History** — snapshots by author, restorable |
+| ![Conflict](docs/screenshots/17-conflict-banner.png)<br>**Concurrent edit** — the stale client is stopped, not overwritten | ![Login](docs/screenshots/01-login.png)<br>**Sign in** — one-click seeded accounts |
 
 More in [`docs/screenshots/`](docs/screenshots) — login, search, export menu, and the
 error states.

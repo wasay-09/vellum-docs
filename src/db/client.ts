@@ -64,7 +64,8 @@ export function getDb(): Promise<Db> {
       // Fail loudly: the WASM fallback keeps data in the serverless container's
       // filesystem, which is per-instance and thrown away. Never in production.
       throw new Error(
-        "DATABASE_URL is required in production. Set it to a Postgres connection string.",
+        "DATABASE_URL is required in production. Set it to a Postgres connection string, " +
+          "or use `npm run dev`, which boots the embedded database instead.",
       );
     }
     // Never cache a rejected connection: a transient failure at boot would otherwise
