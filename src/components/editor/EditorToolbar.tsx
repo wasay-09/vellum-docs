@@ -95,7 +95,25 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
   });
 
   if (!editor || !state) {
-    return <div className="h-11 border-b border-line bg-paper" aria-hidden />;
+    // The editor mounts after hydration (immediatelyRender: false), so hold the exact
+    // toolbar layout with placeholders instead of flashing an empty bar.
+    return (
+      <div
+        className="flex items-center gap-0.5 border-b border-line bg-paper px-3 py-1.5 sm:px-6"
+        aria-hidden
+      >
+        {[2, 1, 5, 3, 2].map((count, group) => (
+          <div key={group} className="flex items-center gap-0.5 px-1">
+            {Array.from({ length: count }).map((_, index) => (
+              <div
+                key={index}
+                className="size-8 rounded-md bg-canvas"
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
   }
 
   const mod = modKey();

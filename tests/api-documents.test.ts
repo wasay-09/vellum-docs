@@ -85,7 +85,7 @@ async function signIn(email: string): Promise<void> {
 }
 
 async function documents(): Promise<DocumentListResponse> {
-  const response = await listDocuments(jsonRequest("/api/documents", "GET"));
+  const response = await listDocuments();
   expect(response.status).toBe(200);
   return response.json();
 }
@@ -117,7 +117,7 @@ beforeAll(async () => {
 describe("authentication", () => {
   it("rejects unauthenticated requests", async () => {
     jar.clear();
-    const response = await listDocuments(jsonRequest("/api/documents", "GET"));
+    const response = await listDocuments();
     expect(response.status).toBe(401);
     expect((await response.json()).error.code).toBe("unauthorized");
   });
@@ -193,7 +193,8 @@ describe("editing and validation", () => {
     );
     expect(doc.contentHtml).toBe("<h1>Hi</h1><p>text</p>");
     expect(doc.wordCount).toBe(2);
-    expect(doc.excerpt).toContain("Hi text");
+    // The excerpt skips the leading heading, which the card already shows as the title.
+    expect(doc.excerpt).toBe("text");
   });
 
   it("falls back to a default title and trims whitespace", async () => {

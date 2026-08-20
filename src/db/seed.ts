@@ -1,4 +1,5 @@
 import type { Db } from "./client";
+import { excerptFromHtml, wordCountFromHtml } from "@/lib/content";
 import { DEMO_PASSWORD, DEMO_USERS as DEMO_ACCOUNTS } from "@/lib/demo-users";
 import { hashPassword } from "@/lib/password";
 import { documentShares, documents, users } from "./schema";
@@ -30,19 +31,6 @@ const SPEC_HTML = `<h1>Q3 Onboarding Revamp — Draft</h1>
 const PRIVATE_HTML = `<h1>Carol's private notes</h1>
 <p>This document is intentionally shared with nobody. It exists so the access-control behaviour is demonstrable: signed in as Alice or Bob, this document must not appear anywhere and requesting it directly must return 404.</p>`;
 
-function excerptOf(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 220);
-}
-
-function wordCountOf(html: string): number {
-  const text = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-  return text ? text.split(" ").length : 0;
-}
-
 /**
  * Idempotent: safe to run on every boot of the zero-setup PGlite path and safe to
  * re-run against a deployed database.
@@ -69,24 +57,24 @@ export async function seedDatabase(db: Db): Promise<{ created: boolean }> {
         ownerId: alice.id,
         title: "Welcome to Vellum",
         contentHtml: WELCOME_HTML,
-        excerpt: excerptOf(WELCOME_HTML),
-        wordCount: wordCountOf(WELCOME_HTML),
+        excerpt: excerptFromHtml(WELCOME_HTML),
+        wordCount: wordCountFromHtml(WELCOME_HTML),
         updatedById: alice.id,
       },
       {
         ownerId: bob.id,
         title: "Q3 Onboarding Revamp — Draft",
         contentHtml: SPEC_HTML,
-        excerpt: excerptOf(SPEC_HTML),
-        wordCount: wordCountOf(SPEC_HTML),
+        excerpt: excerptFromHtml(SPEC_HTML),
+        wordCount: wordCountFromHtml(SPEC_HTML),
         updatedById: bob.id,
       },
       {
         ownerId: carol.id,
         title: "Carol's private notes",
         contentHtml: PRIVATE_HTML,
-        excerpt: excerptOf(PRIVATE_HTML),
-        wordCount: wordCountOf(PRIVATE_HTML),
+        excerpt: excerptFromHtml(PRIVATE_HTML),
+        wordCount: wordCountFromHtml(PRIVATE_HTML),
         updatedById: carol.id,
       },
     ])

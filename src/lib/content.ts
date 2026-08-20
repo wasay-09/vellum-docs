@@ -9,7 +9,7 @@ import sanitizeHtml from "sanitize-html";
 
 export const MAX_CONTENT_BYTES = 400_000; // ~400 KB of HTML, comfortably long docs.
 export const MAX_TITLE_LENGTH = 200;
-export const MAX_UPLOAD_BYTES = 2_000_000; // 2 MB
+export { MAX_UPLOAD_BYTES } from "./import-spec";
 
 const ALLOWED_TAGS = [
   "p",
@@ -82,7 +82,12 @@ export function htmlToPlainText(html: string): string {
 }
 
 export function excerptFromHtml(html: string, length = 220): string {
-  const text = htmlToPlainText(html);
+  // Documents usually open with a heading that repeats the title, and repeating it in
+  // the dashboard preview wastes the only three lines we get. Drop a leading heading
+  // when there is body text after it.
+  const withoutLeadHeading = html.replace(/^\s*<h[1-3][^>]*>[\s\S]*?<\/h[1-3]>/i, "");
+  const body = htmlToPlainText(withoutLeadHeading);
+  const text = body || htmlToPlainText(html);
   return text.length > length ? `${text.slice(0, length - 1).trimEnd()}…` : text;
 }
 

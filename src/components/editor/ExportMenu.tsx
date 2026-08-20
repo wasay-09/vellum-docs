@@ -60,25 +60,22 @@ export function ExportMenu({ documentId }: { documentId: string }) {
           aria-label="Export format"
           className="animate-fade-in absolute right-0 z-40 mt-1.5 w-64 overflow-hidden rounded-xl border border-line bg-paper p-1 shadow-lg"
         >
+          {/* Plain anchors: the route replies with `Content-Disposition`, so the
+              browser downloads the file without a client-side navigation. */}
           {FORMATS.map(({ format, label, hint, icon: Icon }) => (
-            <button
+            <a
               key={format}
-              type="button"
               role="menuitem"
+              href={`/api/documents/${documentId}/export?format=${format}`}
               className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-canvas"
-              onClick={() => {
-                setOpen(false);
-                window.location.assign(
-                  `/api/documents/${documentId}/export?format=${format}`,
-                );
-              }}
+              onClick={() => setOpen(false)}
             >
               <Icon className="mt-0.5 size-4 shrink-0 text-ink-400" aria-hidden />
               <span>
                 <span className="block text-[13px] font-medium text-ink-900">{label}</span>
                 <span className="block text-[12px] text-ink-500">{hint}</span>
               </span>
-            </button>
+            </a>
           ))}
           <div className="my-1 border-t border-line" />
           <button

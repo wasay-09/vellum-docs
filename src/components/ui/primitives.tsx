@@ -1,7 +1,13 @@
 "use client";
 
 import clsx from "clsx";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import { useEffect } from "react";
+import type {
+  ButtonHTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+  Ref,
+} from "react";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md";
@@ -41,10 +47,12 @@ export function Button({
 
 export function TextInput({
   className,
+  ref,
   ...props
-}: InputHTMLAttributes<HTMLInputElement>) {
+}: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement> }) {
   return (
     <input
+      ref={ref}
       className={clsx(
         "h-9.5 w-full rounded-lg border border-line bg-paper px-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none",
         className,
@@ -141,6 +149,16 @@ export function Modal({
   children: ReactNode;
   width?: string;
 }) {
+  // Escape closes every dialog, so callers never have to wire it up themselves.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <div

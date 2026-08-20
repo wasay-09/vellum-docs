@@ -2,38 +2,20 @@
 
 import clsx from "clsx";
 import { CloudUpload, FileText, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Button, ErrorNote, Modal, Spinner } from "@/components/ui/primitives";
 import { ApiClientError, api } from "@/lib/api-client";
 import type { DocumentDetail } from "@/lib/api-types";
-import { MAX_UPLOAD_BYTES } from "@/lib/content";
 import {
+  MAX_UPLOAD_BYTES,
   SUPPORTED_IMPORT_ACCEPT,
-  SUPPORTED_IMPORT_EXTENSIONS,
   SUPPORTED_IMPORT_TYPES,
-} from "@/lib/import";
+  describeUploadProblem,
+} from "@/lib/import-spec";
 
 type ImportMode = "append" | "replace";
 
 const SIZE_LIMIT_LABEL = `${Math.round(MAX_UPLOAD_BYTES / 1_000_000)} MB`;
-
-function extensionOf(filename: string): string {
-  const match = /\.[a-z0-9]+$/i.exec(filename.trim());
-  return match ? match[0].toLowerCase() : "";
-}
-
-/** Cheap client-side gate so obvious mistakes never cost a round trip. */
-function validate(file: File): string | null {
-  const extension = extensionOf(file.name);
-  if (!SUPPORTED_IMPORT_EXTENSIONS.includes(extension as never)) {
-    return `“${file.name}” is not a supported file type. Choose a ${SUPPORTED_IMPORT_EXTENSIONS.join(", ")} file.`;
-  }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return `“${file.name}” is ${(file.size / 1_000_000).toFixed(1)} MB. The limit is ${SIZE_LIMIT_LABEL}.`;
-  }
-  if (file.size === 0) return `“${file.name}” is empty.`;
-  return null;
-}
 
 function ModeOption({
   value,
@@ -90,19 +72,10 @@ export function ImportDialog({
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, busy, onClose]);
-
   const choose = (next: File | null) => {
     setDragging(false);
     if (!next) return;
-    const problem = validate(next);
+    const problem = describeUploadProblem(next);
     setError(problem);
     setFile(problem ? null : next);
   };
@@ -119,6 +92,8 @@ export function ImportDialog({
       onImported(result.document, result.warnings);
       setFile(null);
       setMode("append");
+      // Clear the native input so re-picking the same file still fires `change`.
+      if (inputRef.current) inputRef.current.value = "";
       onClose();
     } catch (cause) {
       setError(

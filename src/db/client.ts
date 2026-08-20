@@ -16,7 +16,6 @@ export type Db = NodePgDatabase<typeof schema>;
  * in-memory variant of the same driver (see tests/helpers/test-db.ts).
  */
 declare global {
-  // eslint-disable-next-line no-var
   var __vellumDb: Promise<Db> | undefined;
 }
 
@@ -24,6 +23,12 @@ async function createPgliteDb(): Promise<Db> {
   const { PGlite } = await import("@electric-sql/pglite");
   const { drizzle } = await import("drizzle-orm/pglite");
   const dataDir = process.env.PGLITE_DATA_DIR ?? ".data/pglite";
+  if (!dataDir.startsWith("memory://")) {
+    // PGlite creates its own directory but not missing parents, so a fresh clone
+    // (or `npm run db:reset`) would otherwise fail on the first request.
+    const { mkdirSync } = await import("node:fs");
+    mkdirSync(dataDir, { recursive: true });
+  }
   const client = new PGlite(dataDir);
   await client.waitReady;
   const db = drizzle(client, { schema }) as unknown as Db;
@@ -62,7 +67,14 @@ export function getDb(): Promise<Db> {
         "DATABASE_URL is required in production. Set it to a Postgres connection string.",
       );
     }
-    globalThis.__vellumDb = url ? createNodePostgresDb(url) : createPgliteDb();
+    // Never cache a rejected connection: a transient failure at boot would otherwise
+    // poison every later request in this process.
+    globalThis.__vellumDb = (url ? createNodePostgresDb(url) : createPgliteDb()).catch(
+      (error: unknown) => {
+        globalThis.__vellumDb = undefined;
+        throw error;
+      },
+    );
   }
   return globalThis.__vellumDb;
 }

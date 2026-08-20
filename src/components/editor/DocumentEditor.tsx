@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import {
   type ButtonHTMLAttributes,
   type ComponentType,
+  type ReactNode,
   useCallback,
   useEffect,
   useRef,
@@ -245,7 +246,6 @@ export function DocumentEditor({
         tone: "red",
         icon: TriangleAlert,
         text: "This document was changed by someone else. Reload to see the latest version — autosave is paused so nothing gets overwritten.",
-        action: { label: "Reload", run: () => void reload() },
       };
     }
     if (saveState === "error" && saveError) {
@@ -253,7 +253,6 @@ export function DocumentEditor({
         tone: "red",
         icon: TriangleAlert,
         text: saveError,
-        action: { label: "Retry", run: () => void saveRef.current() },
       };
     }
     if (!access.canEdit) {
@@ -267,7 +266,14 @@ export function DocumentEditor({
   })();
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
+    // On wide screens the page makes room for the history panel instead of hiding
+    // behind it, so the top bar's menus stay clickable.
+    <div
+      className={clsx(
+        "flex min-h-screen flex-col bg-canvas transition-[padding] duration-200",
+        historyOpen && "lg:pr-[360px]",
+      )}
+    >
       <header className="print-hidden sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur">
         <div className="flex h-14 items-center gap-2 px-3 sm:gap-3 sm:px-6">
           <Link
@@ -359,7 +365,19 @@ export function DocumentEditor({
       ) : null}
 
       <div className="print-hidden">
-        {notice ? <NoticeBar notice={notice} /> : null}
+        {notice ? (
+          <NoticeBar notice={notice}>
+            {saveState === "conflict" ? (
+              <Button size="sm" onClick={() => void reload()}>
+                Reload
+              </Button>
+            ) : saveState === "error" ? (
+              <Button size="sm" onClick={() => void save()}>
+                Retry
+              </Button>
+            ) : null}
+          </NoticeBar>
+        ) : null}
         {warnings.length > 0 ? (
           <NoticeBar
             notice={{
@@ -411,7 +429,6 @@ interface Notice {
   tone: "red" | "amber";
   icon: ComponentType<{ className?: string }>;
   text: string;
-  action?: { label: string; run: () => void };
 }
 
 function Dot() {
@@ -492,8 +509,16 @@ function AvatarStack({ owner, people }: { owner: PublicUser; people: PublicUser[
   );
 }
 
-function NoticeBar({ notice, onDismiss }: { notice: Notice; onDismiss?: () => void }) {
-  const { tone, icon: Icon, text, action } = notice;
+function NoticeBar({
+  notice,
+  children,
+  onDismiss,
+}: {
+  notice: Notice;
+  children?: ReactNode;
+  onDismiss?: () => void;
+}) {
+  const { tone, icon: Icon, text } = notice;
   return (
     <div
       role="status"
@@ -506,11 +531,7 @@ function NoticeBar({ notice, onDismiss }: { notice: Notice; onDismiss?: () => vo
     >
       <Icon className="size-4 shrink-0" />
       <span className="flex-1">{text}</span>
-      {action ? (
-        <Button size="sm" onClick={action.run}>
-          {action.label}
-        </Button>
-      ) : null}
+      {children}
       {onDismiss ? (
         <button
           type="button"

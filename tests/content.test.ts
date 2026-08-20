@@ -54,8 +54,16 @@ describe("sanitizeDocumentHtml", () => {
 
 describe("derived fields", () => {
   it("builds a plain-text excerpt and truncates with an ellipsis", () => {
-    expect(excerptFromHtml("<h1>Hello</h1><p>World</p>")).toBe("Hello World");
+    expect(excerptFromHtml("<p>Hello</p><p>World</p>")).toBe("Hello World");
     expect(excerptFromHtml(`<p>${"word ".repeat(100)}</p>`, 20)).toHaveLength(20);
+  });
+
+  it("skips a leading heading so the preview is not the title twice", () => {
+    expect(excerptFromHtml("<h1>Launch plan</h1><p>Ship on Friday.</p>")).toBe(
+      "Ship on Friday.",
+    );
+    // ...unless the heading is all there is.
+    expect(excerptFromHtml("<h1>Launch plan</h1>")).toBe("Launch plan");
   });
 
   it("counts words, not tags", () => {

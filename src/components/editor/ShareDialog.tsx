@@ -49,15 +49,6 @@ export function ShareDialog({ open, onClose, document: doc, onDocumentChange }: 
   const [people, setPeople] = useState<PublicUser[] | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
-
-  useEffect(() => {
     if (!open || people) return;
     let cancelled = false;
     api
@@ -122,7 +113,7 @@ export function ShareDialog({ open, onClose, document: doc, onDocumentChange }: 
               id="share-email"
               type="email"
               autoComplete="off"
-              placeholder="teammate@vellum.test"
+              placeholder="bob@ajaia.test"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               onKeyDown={(event) => {

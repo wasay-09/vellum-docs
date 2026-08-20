@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, Button, ErrorNote, Spinner, relativeTime } from "@/components/ui/primitives";
 import { ApiClientError, api } from "@/lib/api-client";
 import type { DocumentDetail, DocumentVersionSummary } from "@/lib/api-types";
@@ -53,24 +53,30 @@ export function VersionHistory({
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const { versions: rows } = await api.listVersions(documentId);
-      setVersions(rows);
-    } catch (cause) {
-      setVersions([]);
-      setError(
-        cause instanceof ApiClientError ? cause.message : "Could not load version history.",
-      );
-    }
-  }, [documentId]);
-
+  // Fetching in a `.then` callback (rather than awaiting in the effect body) keeps
+  // the panel's state updates outside of render, and `cancelled` drops stale replies.
   useEffect(() => {
     if (!open) return;
-    setConfirming(null);
-    void load();
-  }, [open, reloadKey, load]);
+    let cancelled = false;
+    api
+      .listVersions(documentId)
+      .then(({ versions: rows }) => {
+        if (cancelled) return;
+        setVersions(rows);
+        setConfirming(null);
+        setError(null);
+      })
+      .catch((cause: unknown) => {
+        if (cancelled) return;
+        setVersions([]);
+        setError(
+          cause instanceof ApiClientError ? cause.message : "Could not load version history.",
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, reloadKey, documentId]);
 
   useEffect(() => {
     if (!open) return;
@@ -90,7 +96,6 @@ export function VersionHistory({
       const { document: next } = await api.restoreVersion(documentId, versionId);
       onRestored(next);
       setConfirming(null);
-      await load();
     } catch (cause) {
       setError(
         cause instanceof ApiClientError ? cause.message : "Could not restore that version.",

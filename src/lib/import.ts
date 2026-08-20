@@ -1,5 +1,11 @@
 import { marked } from "marked";
-import { MAX_UPLOAD_BYTES, sanitizeDocumentHtml } from "./content";
+import { sanitizeDocumentHtml } from "./content";
+import {
+  MAX_UPLOAD_BYTES,
+  SUPPORTED_IMPORT_EXTENSIONS,
+  extensionOf,
+  titleFromFilename,
+} from "./import-spec";
 
 /**
  * File import. Conversion happens on the server so the browser never has to trust
@@ -7,18 +13,16 @@ import { MAX_UPLOAD_BYTES, sanitizeDocumentHtml } from "./content";
  * as editor input.
  */
 
-export const SUPPORTED_IMPORT_TYPES = [
-  { extension: ".docx", label: "Word (.docx)" },
-  { extension: ".md", label: "Markdown (.md)" },
-  { extension: ".markdown", label: "Markdown (.markdown)" },
-  { extension: ".txt", label: "Plain text (.txt)" },
-] as const;
-
-export const SUPPORTED_IMPORT_EXTENSIONS = SUPPORTED_IMPORT_TYPES.map(
-  (type) => type.extension,
-);
-
-export const SUPPORTED_IMPORT_ACCEPT = SUPPORTED_IMPORT_EXTENSIONS.join(",");
+export {
+  MAX_UPLOAD_BYTES,
+  SUPPORTED_IMPORT_ACCEPT,
+  SUPPORTED_IMPORT_EXTENSIONS,
+  SUPPORTED_IMPORT_TYPES,
+  describeUploadProblem,
+  extensionOf,
+  isSupportedImport,
+  titleFromFilename,
+} from "./import-spec";
 
 export class ImportError extends Error {
   constructor(
@@ -35,17 +39,6 @@ export interface ImportResult {
   /** Title derived from the file name (or the first heading for markdown/docx). */
   suggestedTitle: string;
   warnings: string[];
-}
-
-export function extensionOf(filename: string): string {
-  const match = /\.[a-z0-9]+$/i.exec(filename.trim());
-  return match ? match[0].toLowerCase() : "";
-}
-
-export function titleFromFilename(filename: string): string {
-  const base = filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
-  if (!base) return "Imported document";
-  return base.charAt(0).toUpperCase() + base.slice(1);
 }
 
 function escapeHtml(value: string): string {

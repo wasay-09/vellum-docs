@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { FileUp, Plus, Search } from "lucide-react";
 import { ApiClientError, api } from "@/lib/api-client";
 import type { DocumentListResponse, DocumentSummary, PublicUser } from "@/lib/api-types";
-import { MAX_UPLOAD_BYTES } from "@/lib/content";
 import {
+  MAX_UPLOAD_BYTES,
   SUPPORTED_IMPORT_ACCEPT,
   SUPPORTED_IMPORT_EXTENSIONS,
   SUPPORTED_IMPORT_TYPES,
   extensionOf,
-} from "@/lib/import";
+} from "@/lib/import-spec";
 import { Button, ErrorNote, Modal, Spinner, TextInput } from "@/components/ui/primitives";
 import { DocumentCard, UNTITLED } from "./DocumentCard";
 
