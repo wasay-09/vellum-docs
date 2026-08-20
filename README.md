@@ -1,5 +1,7 @@
 # Vellum
 
+[![CI](https://github.com/wasay-09/vellum-docs/actions/workflows/ci.yml/badge.svg)](https://github.com/wasay-09/vellum-docs/actions/workflows/ci.yml)
+
 A lightweight collaborative document editor — create, format, import and share documents.
 Built for the **Ajaia AI-Native Full Stack Developer assignment**.
 

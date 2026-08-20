@@ -275,7 +275,8 @@ export function DocumentEditor({
       )}
     >
       <header className="print-hidden sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur">
-        <div className="flex h-14 items-center gap-2 px-3 sm:gap-3 sm:px-6">
+        {/* Narrow screens scroll the bar itself rather than widening the page. */}
+        <div className="flex h-14 items-center gap-2 overflow-x-auto px-3 sm:gap-3 sm:px-6">
           <Link
             href="/documents"
             title="Back to all documents"
