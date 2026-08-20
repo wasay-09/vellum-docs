@@ -190,7 +190,7 @@ gets a readable message rather than a stack trace.
 | Attachments alongside documents | Import (file → editable content) is the more product-relevant upload for a *document editor*; blob storage would have added a provider dependency for less value. |
 | Folders, trash, search-by-content, tags | Dashboard search filters titles and excerpts client-side. |
 | Server-side PDF rendering | Export covers Markdown, plain text and standalone HTML; PDF goes through the browser's print dialog with a print stylesheet. |
-| Dark mode, mobile editing polish | Desktop-first, which is where the product lives. |
+| Dark mode, tuned mobile editing | Desktop-first, which is where the product lives. The layout is responsive down to phone widths, but touch editing ergonomics were not tuned. |
 | E2E browser tests | Deliberate: see §9. |
 
 ## 9. Testing strategy

@@ -5,7 +5,7 @@
 A lightweight collaborative document editor — create, format, import and share documents.
 Built for the **Ajaia AI-Native Full Stack Developer assignment**.
 
-**Live app:** __LIVE_URL__
+**Live app:** https://vellum-docs-green.vercel.app
 **Repository:** https://github.com/wasay-09/vellum-docs
 
 > Sign in with any demo account below (they are all seeded, password `demo1234`) and you
@@ -108,7 +108,9 @@ Scope cuts, made up front — see [ARCHITECTURE.md](./ARCHITECTURE.md) §8 for t
   excerpts on the client.
 - **No attachments** stored alongside documents — file upload is wired to *import*, which is
   the more product-relevant behaviour for a document editor.
-- **No dark mode, no mobile editing polish, no E2E browser tests.**
+- **No dark mode and no E2E browser tests.** The layout holds down to phone widths, but
+  mobile editing ergonomics (touch selection, on-screen keyboard) were not tuned —
+  this is a desktop-first product.
 
 ---
 
@@ -163,7 +165,7 @@ npm run db:setup                         # with DATABASE_URL in your shell/.env
 vercel --prod
 ```
 
-Then check `__LIVE_URL__/api/health` → `{"status":"ok","driver":"postgres",...}`.
+Then check `https://vellum-docs-green.vercel.app/api/health` → `{"status":"ok","driver":"postgres",...}`.
 
 ---
 

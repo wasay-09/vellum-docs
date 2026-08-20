@@ -99,7 +99,7 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
     // toolbar layout with placeholders instead of flashing an empty bar.
     return (
       <div
-        className="flex items-center gap-0.5 border-b border-line bg-paper px-3 py-1.5 sm:px-6"
+        className="flex flex-wrap items-center gap-0.5 border-b border-line bg-paper px-3 py-1.5 sm:px-6"
         aria-hidden
       >
         {[2, 1, 5, 3, 2].map((count, group) => (

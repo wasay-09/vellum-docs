@@ -9,10 +9,10 @@
 
 | What | Where |
 |---|---|
-| **Live app** | __LIVE_URL__ |
+| **Live app** | https://vellum-docs-green.vercel.app |
 | **Walkthrough video (3–5 min)** | __VIDEO_URL__ |
 | **Source code** | https://github.com/wasay-09/vellum-docs |
-| **Deployment health check** | `__LIVE_URL__/api/health` |
+| **Deployment health check** | `https://vellum-docs-green.vercel.app/api/health` |
 
 ## Test accounts
 
