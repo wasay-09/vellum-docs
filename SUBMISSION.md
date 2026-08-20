@@ -10,7 +10,7 @@
 | What | Where |
 |---|---|
 | **Live app** | https://vellum-docs-green.vercel.app |
-| **Walkthrough video (3–5 min)** | __VIDEO_URL__ |
+| **Walkthrough video (3–5 min)** | PASTE_VIDEO_URL_HERE |
 | **Source code** | https://github.com/wasay-09/vellum-docs |
 | **Deployment health check** | `https://vellum-docs-green.vercel.app/api/health` |
 
